@@ -26,6 +26,7 @@ import dev.waterdog.waterdogpe.network.protocol.user.HandshakeEntry;
 import dev.waterdog.waterdogpe.network.protocol.user.HandshakeUtils;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.security.SecurityManager;
+import dev.waterdog.waterdogpe.utils.types.TextContainer;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.compat.BedrockCompat;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
@@ -149,7 +150,13 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
             this.proxy.getLogger().debug("[{}] <-> Received login with authType: {} and payloadType: {}.", this.session.getSocketAddress(),
                     packet.getAuthPayload().getClass().getSimpleName(), packet.getAuthPayload().getAuthType());
 
-            handshakeEntry = HandshakeUtils.processHandshake(this.session, packet, protocol, strictAuth);
+            try {
+                handshakeEntry = HandshakeUtils.processHandshake(this.session, packet, protocol, strictAuth);
+            } catch (Exception e) {
+                this.onLoginFailed(null, e, proxy.translate(new TextContainer("disconnectReasons.authenticationDown")));
+                this.proxy.getLogger().info("[{}] <-> Upstream has disconnected due to down auth servers", this.session.getSocketAddress());
+                return PacketSignal.HANDLED;
+            }
             if (!handshakeEntry.isXboxAuthed() && strictAuth) {
                 this.onLoginFailed(handshakeEntry, null, "disconnectionScreen.notAuthenticated");
                 this.proxy.getLogger().info("[{}|{}] <-> Upstream has disconnected due to failed XBOX authentication!", this.session.getSocketAddress(), handshakeEntry.getDisplayName());
