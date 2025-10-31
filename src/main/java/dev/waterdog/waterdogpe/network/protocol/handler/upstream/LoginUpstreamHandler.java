@@ -26,6 +26,7 @@ import dev.waterdog.waterdogpe.network.protocol.user.HandshakeEntry;
 import dev.waterdog.waterdogpe.network.protocol.user.HandshakeUtils;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
 import dev.waterdog.waterdogpe.security.SecurityManager;
+import dev.waterdog.waterdogpe.utils.types.TextContainer;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.compat.BedrockCompat;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
@@ -146,7 +147,16 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
 
         this.session.setLogging(WaterdogPE.version().debug());
         try {
-            handshakeEntry = HandshakeUtils.processHandshake(this.session, packet, protocol, strictAuth);
+            this.proxy.getLogger().debug("[{}] <-> Received login with authType: {} and payloadType: {}.", this.session.getSocketAddress(),
+                    packet.getAuthPayload().getClass().getSimpleName(), packet.getAuthPayload().getAuthType());
+
+            try {
+                handshakeEntry = HandshakeUtils.processHandshake(this.session, packet, protocol, strictAuth);
+            } catch (Exception e) {
+                this.onLoginFailed(null, e, proxy.translate(new TextContainer("disconnectReasons.authenticationDown")));
+                this.proxy.getLogger().info("[{}] <-> Upstream has disconnected due to down auth servers", this.session.getSocketAddress());
+                return PacketSignal.HANDLED;
+            }
             if (!handshakeEntry.isXboxAuthed() && strictAuth) {
                 this.onLoginFailed(handshakeEntry, null, "disconnectionScreen.notAuthenticated");
                 this.proxy.getLogger().info("[{}|{}] <-> Upstream has disconnected due to failed XBOX authentication!", this.session.getSocketAddress(), handshakeEntry.getDisplayName());
@@ -155,7 +165,7 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
 
             // Thank you Mojang: this version includes protocol changes, but protocol version was not increased.
             if (protocol.equals(ProtocolVersion.MINECRAFT_PE_1_19_60) && handshakeEntry.getClientData().has("GameVersion") &&
-                    ProtocolVersion.MINECRAFT_PE_1_19_62.getMinecraftVersion().equals(handshakeEntry.getClientData().get("GameVersion").getAsString())) {;
+                    ProtocolVersion.MINECRAFT_PE_1_19_62.getMinecraftVersion().equals(handshakeEntry.getClientData().get("GameVersion").getAsString())) {
                 handshakeEntry.setProtocol(protocol = ProtocolVersion.MINECRAFT_PE_1_19_62);
                 this.session.getPeer().setProtocol(protocol);
             }
