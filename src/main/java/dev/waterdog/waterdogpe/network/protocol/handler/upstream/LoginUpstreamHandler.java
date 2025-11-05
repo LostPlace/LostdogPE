@@ -157,6 +157,7 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
                 this.proxy.getLogger().info("[{}] <-> Upstream has disconnected due to down auth servers", this.session.getSocketAddress());
                 return PacketSignal.HANDLED;
             }
+
             if (!handshakeEntry.isXboxAuthed() && strictAuth) {
                 this.onLoginFailed(handshakeEntry, null, "disconnectionScreen.notAuthenticated");
                 this.proxy.getLogger().info("[{}|{}] <-> Upstream has disconnected due to failed XBOX authentication!", this.session.getSocketAddress(), handshakeEntry.getDisplayName());
