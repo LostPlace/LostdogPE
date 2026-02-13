@@ -17,6 +17,8 @@ package dev.waterdog.waterdogpe.network.protocol;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import lombok.Getter;
+import lombok.Setter;
 import lombok.ToString;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.v313.Bedrock_v313;
@@ -73,7 +75,9 @@ import org.cloudburstmc.protocol.bedrock.codec.v819.Bedrock_v819;
 import org.cloudburstmc.protocol.bedrock.codec.v827.Bedrock_v827;
 import org.cloudburstmc.protocol.bedrock.codec.v844.Bedrock_v844;
 import org.cloudburstmc.protocol.bedrock.codec.v859.Bedrock_v859;
+import org.cloudburstmc.protocol.bedrock.codec.v860.Bedrock_v860;
 import org.cloudburstmc.protocol.bedrock.codec.v898.Bedrock_v898;
+import org.cloudburstmc.protocol.bedrock.codec.v924.Bedrock_v924;
 
 @ToString(exclude = {"defaultCodec", "bedrockCodec"})
 public enum ProtocolVersion {
@@ -135,8 +139,9 @@ public enum ProtocolVersion {
     MINECRAFT_PE_1_21_110(843, 844, Bedrock_v844.CODEC),
     MINECRAFT_PE_1_21_111(844, Bedrock_v844.CODEC),
     MINECRAFT_PE_1_21_120(859, Bedrock_v859.CODEC),
-    MINECRAFT_PE_1_21_124(860, Bedrock_v859.CODEC),
+    MINECRAFT_PE_1_21_124(860, Bedrock_v860.CODEC),
     MINECRAFT_PE_1_21_130(898, Bedrock_v898.CODEC),
+    MINECRAFT_PE_1_26_0(924, Bedrock_v924.CODEC),
     ;
 
     private static final ProtocolVersion[] VALUES = values();
@@ -147,10 +152,14 @@ public enum ProtocolVersion {
         }
     }
 
+    @Getter
     private final int protocol;
+    @Getter
     private final int protocolInternal;
 
+    @Getter
     private final BedrockCodec defaultCodec;
+    @Setter
     private BedrockCodec bedrockCodec;
 
     ProtocolVersion(int protocol, BedrockCodec codec) {
@@ -179,28 +188,12 @@ public enum ProtocolVersion {
         return this.protocolInternal >= version.protocolInternal;
     }
 
-    public int getProtocol() {
-        return this.protocol;
-    }
-
-    public int getProtocolInternal() {
-        return this.protocolInternal;
-    }
-
     public int getRaknetVersion() {
         return this.getCodec().getRaknetProtocolVersion();
     }
 
-    public BedrockCodec getDefaultCodec() {
-        return this.defaultCodec;
-    }
-
     public BedrockCodec getCodec() {
         return this.bedrockCodec == null ? this.defaultCodec : this.bedrockCodec;
-    }
-
-    public void setBedrockCodec(BedrockCodec bedrockCodec) {
-        this.bedrockCodec = bedrockCodec;
     }
 
     public String getMinecraftVersion() {
