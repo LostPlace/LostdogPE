@@ -60,6 +60,8 @@ import io.netty.channel.EventLoopGroup;
 import io.netty.channel.epoll.Epoll;
 import io.netty.channel.unix.UnixChannelOption;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Getter;
+import lombok.Setter;
 import net.cubespace.Yamler.Config.InvalidConfigurationException;
 import org.cloudburstmc.netty.channel.raknet.RakChannelFactory;
 import org.cloudburstmc.netty.channel.raknet.config.RakChannelOption;
@@ -72,44 +74,68 @@ import java.util.*;
 import java.util.concurrent.*;
 
 public class ProxyServer {
+    @Getter
     private static ProxyServer instance;
 
+    @Getter
     private final Path dataPath;
+    @Getter
     private final Path pluginPath;
     private final Path packsPath;
 
+    @Getter
     private final MainLogger logger;
     private final TerminalConsole console;
 
+    @Getter
     private final ConfigurationManager configurationManager;
+    @Getter
     private final WaterdogScheduler scheduler;
+    @Getter
     private final PlayerManager playerManager;
+    @Getter
     private final PluginManager pluginManager;
+    @Getter
     private final EventManager eventManager;
+    @Getter
     private final PackManager packManager;
 
+    @Getter
     private final ServerInfoMap serverInfoMap = new ServerInfoMap();
 
     private final long serverId;
     private final List<Channel> serverChannels = new ObjectArrayList<>();
 
+    @Getter
     private QueryHandler queryHandler;
 
+    @Getter
     private CommandMap commandMap;
     private final ConsoleCommandSender commandSender;
 
+    @Getter
     private final SecurityManager securityManager;
+    @Getter
     private final ErrorReporting errorReporting;
 
+    @Setter
+    @Getter
     private IReconnectHandler reconnectHandler;
+    @Setter
+    @Getter
     private IJoinHandler joinHandler;
+    @Setter
+    @Getter
     private IForcedHostHandler forcedHostHandler;
+    @Getter
     private NetworkMetrics networkMetrics;
     private final EventLoopGroup bossEventLoopGroup;
+    @Getter
     private final EventLoopGroup workerEventLoopGroup;
     private final ScheduledExecutorService tickExecutor;
     private ScheduledFuture<?> tickFuture;
     private volatile boolean shutdown = false;
+    @Getter
     private int currentTick = 0;
 
     public ProxyServer(MainLogger logger, String filePath, String pluginPath) throws InvalidConfigurationException {
@@ -199,10 +225,6 @@ public class ProxyServer {
         this.boot();
     }
 
-    public static ProxyServer getInstance() {
-        return instance;
-    }
-
     private void boot() {
         this.console.getConsoleThread().start();
         this.pluginManager.enableAllPlugins();
@@ -224,6 +246,7 @@ public class ProxyServer {
         }
 
         InetSocketAddress bindAddress = this.getConfiguration().getBindAddress();
+        bindAddress = new InetSocketAddress(bindAddress.getHostString(), bindAddress.getPort());
         this.logger.info("Binding to {}", bindAddress);
 
         if (this.getConfiguration().enableQuery()) {
@@ -232,7 +255,7 @@ public class ProxyServer {
 
         this.bindChannels(bindAddress);
         for (Integer port : this.getConfiguration().getAdditionalPorts()) {
-            InetSocketAddress additionalBind = new InetSocketAddress(bindAddress.getAddress(), port);
+            InetSocketAddress additionalBind = new InetSocketAddress(bindAddress.getHostString(), port);
             this.bindChannels(additionalBind);
         }
 
@@ -402,18 +425,6 @@ public class ProxyServer {
         return !this.shutdown;
     }
 
-    public MainLogger getLogger() {
-        return this.logger;
-    }
-
-    public Path getDataPath() {
-        return this.dataPath;
-    }
-
-    public ConfigurationManager getConfigurationManager() {
-        return this.configurationManager;
-    }
-
     public ProxyConfig getConfiguration() {
         return this.configurationManager.getProxyConfig();
     }
@@ -424,14 +435,6 @@ public class ProxyServer {
 
     public LangConfig getLanguageConfig() {
         return this.configurationManager.getLangConfig();
-    }
-
-    public WaterdogScheduler getScheduler() {
-        return this.scheduler;
-    }
-
-    public PlayerManager getPlayerManager() {
-        return this.playerManager;
     }
 
     public ProxiedPlayer getPlayer(UUID uuid) {
@@ -529,38 +532,6 @@ public class ProxyServer {
         return this.serverInfoMap.values();
     }
 
-    public ServerInfoMap getServerInfoMap() {
-        return this.serverInfoMap;
-    }
-
-    public Path getPluginPath() {
-        return this.pluginPath;
-    }
-
-    public PluginManager getPluginManager() {
-        return this.pluginManager;
-    }
-
-    public int getCurrentTick() {
-        return this.currentTick;
-    }
-
-    public EventManager getEventManager() {
-        return this.eventManager;
-    }
-
-    public PackManager getPackManager() {
-        return this.packManager;
-    }
-
-    public QueryHandler getQueryHandler() {
-        return this.queryHandler;
-    }
-
-    public CommandMap getCommandMap() {
-        return this.commandMap;
-    }
-
     public void setCommandMap(CommandMap commandMap) {
         Preconditions.checkNotNull(commandMap, "Command map can not be null!");
         this.commandMap = commandMap;
@@ -570,37 +541,9 @@ public class ProxyServer {
         return this.commandSender;
     }
 
-    public IJoinHandler getJoinHandler() {
-        return this.joinHandler;
-    }
-
-    public void setJoinHandler(IJoinHandler joinHandler) {
-        this.joinHandler = joinHandler;
-    }
-
-    public IReconnectHandler getReconnectHandler() {
-        return this.reconnectHandler;
-    }
-
-    public IForcedHostHandler getForcedHostHandler() {
-        return forcedHostHandler;
-    }
-
-    public void setForcedHostHandler(IForcedHostHandler forcedHostHandler) {
-        this.forcedHostHandler = forcedHostHandler;
-    }
-
-    public NetworkMetrics getNetworkMetrics() {
-        return this.networkMetrics;
-    }
-
     public void setNetworkMetrics(NetworkMetrics metrics) {
         Preconditions.checkNotNull(metrics, "You cannot set the metricsHandler to null!");
         this.networkMetrics = metrics;
-    }
-
-    public void setReconnectHandler(IReconnectHandler reconnectHandler) {
-        this.reconnectHandler = reconnectHandler;
     }
 
     @Deprecated
@@ -608,15 +551,4 @@ public class ProxyServer {
         return WaterdogPE.version().debug();
     }
 
-    public SecurityManager getSecurityManager() {
-        return this.securityManager;
-    }
-
-    public EventLoopGroup getWorkerEventLoopGroup() {
-        return this.workerEventLoopGroup;
-    }
-
-    public ErrorReporting getErrorReporting() {
-        return errorReporting;
-    }
 }
