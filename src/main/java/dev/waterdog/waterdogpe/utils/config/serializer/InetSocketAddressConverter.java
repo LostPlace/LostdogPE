@@ -30,23 +30,23 @@ public class InetSocketAddressConverter implements Converter {
     }
 
     @Override
-    public Object toConfig(Class<?> type, Object object, ParameterizedType parameterizedType) throws Exception {
+    public Object toConfig(Class<?> type, Object object, ParameterizedType parameterizedType) {
         if (object == null) {
             return null;
         }
         InetSocketAddress address = (InetSocketAddress) object;
-        return address.getHostName() + ":" + address.getPort();
+        return address.getHostString() + ":" + address.getPort();
     }
 
     @Override
-    public Object fromConfig(Class<?> type, Object object, ParameterizedType parameterizedType) throws Exception {
+    public Object fromConfig(Class<?> type, Object object, ParameterizedType parameterizedType) {
         if (object == null) {
             return null;
         }
         String string = (String) object;
         String address = string.substring(0, string.lastIndexOf(":"));
         int port = Integer.parseInt(string.substring(string.lastIndexOf(":") + 1));
-        return new InetSocketAddress(address, port);
+        return InetSocketAddress.createUnresolved(address, port);
     }
 
     @Override
