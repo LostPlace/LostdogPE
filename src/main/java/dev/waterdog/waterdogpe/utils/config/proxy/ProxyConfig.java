@@ -96,6 +96,10 @@ public class ProxyConfig extends YamlConfig {
     @Comment("Whether the debug output in the console should be enabled or not")
     private boolean debug;
 
+    @Path("debug_packets")
+    @Comment("If enabled, logs all incoming and outgoing Bedrock packets")
+    private boolean debugPackets = false;
+
     @Path("upstream_encryption")
     @Comment("If enabled, encrypted connection between client and proxy will be created")
     private boolean upstreamEncryption = true;

@@ -32,7 +32,7 @@ public class CompressionInitHandler extends AbstractDownstreamHandler {
         this.nextHandler = nextHandler;
 
         RequestNetworkSettingsPacket packet = new RequestNetworkSettingsPacket();
-        packet.setProtocolVersion(player.getProtocol().getProtocol());
+        packet.setClientNetworkVersion(player.getProtocol().getProtocol());
         connection.sendPacket(packet);
     }
 

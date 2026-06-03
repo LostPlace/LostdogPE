@@ -15,7 +15,9 @@
 
 package dev.waterdog.waterdogpe.network.protocol.handler;
 
+import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.network.connection.ProxiedConnection;
+import dev.waterdog.waterdogpe.network.connection.client.ClientConnection;
 import dev.waterdog.waterdogpe.network.protocol.Signals;
 import io.netty.buffer.ByteBuf;
 import io.netty.util.ReferenceCountUtil;
@@ -55,6 +57,8 @@ public class ProxyBatchBridge implements BedrockPacketHandler {
             if (wrapper.getPacket() == null) {
                 this.decodePacket(wrapper, source.getPacketDirection());
             }
+
+            this.logInboundPacket(source, wrapper);
 
             PacketSignal signal = this.handlePacket(wrapper.getPacket());
             if (this.isForceEncode() || signal == PacketSignal.HANDLED) {
@@ -96,6 +100,32 @@ public class ProxyBatchBridge implements BedrockPacketHandler {
         } finally {
             msg.release();
         }
+    }
+
+    private void logInboundPacket(ProxiedConnection source, BedrockPacketWrapper wrapper) {
+        if (!isPacketDebugEnabled()) {
+            return;
+        }
+
+        String sourceLabel = getSourceLabel(source);
+        BedrockPacket packet = wrapper.getPacket();
+        if (packet != null) {
+            log.info("[PacketDebug][IN][{}] {}", sourceLabel, packet);
+        } else {
+            log.info("[PacketDebug][IN][{}] <encoded packet id={}>", sourceLabel, wrapper.getPacketId());
+        }
+    }
+
+    private static boolean isPacketDebugEnabled() {
+        ProxyServer proxy = ProxyServer.getInstance();
+        return proxy != null && proxy.getConfiguration().isDebugPackets();
+    }
+
+    private static String getSourceLabel(ProxiedConnection source) {
+        if (source instanceof ClientConnection client) {
+            return "downstream:" + client.getServerInfo().getServerName();
+        }
+        return "upstream:" + source.getSocketAddress();
     }
 
     public void sendProxiedBatch(BedrockBatchWrapper batch) {

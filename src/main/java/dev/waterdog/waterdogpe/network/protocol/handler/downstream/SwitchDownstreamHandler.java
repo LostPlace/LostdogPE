@@ -21,6 +21,8 @@ import dev.waterdog.waterdogpe.network.protocol.handler.TransferCallback;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.math.vector.Vector3f;
+import org.cloudburstmc.protocol.bedrock.data.PlayStatus;
+import org.cloudburstmc.protocol.bedrock.data.ResourcePackResponse;
 import org.cloudburstmc.protocol.bedrock.data.ScoreInfo;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.event.defaults.ServerTransferEvent;
@@ -55,7 +57,7 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(ServerToClientHandshakePacket packet) {
         try {
-            SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
+            SignedJWT saltJwt = SignedJWT.parse(packet.getHandshakeWebToken());
             URI x5u = saltJwt.getHeader().getX509CertURL();
             ECPublicKey serverKey = EncryptionUtils.parseKey(x5u.toASCIIString());
             SecretKey key = EncryptionUtils.getSecretKey(
@@ -76,7 +78,7 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(ResourcePacksInfoPacket packet) {
         ResourcePackClientResponsePacket response = new ResourcePackClientResponsePacket();
-        response.setStatus(ResourcePackClientResponsePacket.Status.HAVE_ALL_PACKS);
+        response.setResponse(ResourcePackResponse.DOWNLOADING_FINISHED);
         this.connection.sendPacket(response);
         return Signals.CANCEL;
     }
@@ -84,7 +86,7 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(ResourcePackStackPacket packet) {
         ResourcePackClientResponsePacket response = new ResourcePackClientResponsePacket();
-        response.setStatus(ResourcePackClientResponsePacket.Status.COMPLETED);
+        response.setResponse(ResourcePackResponse.RESOURCE_PACK_STACK_FINISHED);
         this.connection.sendPacket(response);
         return Signals.CANCEL;
     }
@@ -100,9 +102,9 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(StartGamePacket packet) {
         RewriteData rewriteData = this.player.getRewriteData();
-        rewriteData.setOriginalEntityId(packet.getRuntimeEntityId());
-        rewriteData.setGameRules(packet.getGamerules());
-        rewriteData.setSpawnPosition(packet.getPlayerPosition());
+        rewriteData.setOriginalEntityId(packet.getRuntimeID());
+        rewriteData.setGameRules(packet.getSettings().getRuleData().getRulesList());
+        rewriteData.setSpawnPosition(packet.getPosition());
         rewriteData.setRotation(packet.getRotation());
 
         if (this.player.getProtocol().isBeforeOrEqual(ProtocolVersion.MINECRAFT_PE_1_16_20)) {
@@ -138,7 +140,7 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
 
         LongSet blobs = this.player.getChunkBlobs();
         if (this.player.getProtocol().isBefore(ProtocolVersion.MINECRAFT_PE_1_18_30) &&
-                this.player.getLoginData().getCachePacket().isSupported() && !blobs.isEmpty()) {
+                this.player.getLoginData().getCachePacket().isCacheSupported() && !blobs.isEmpty()) {
             injectChunkCacheBlobs(this.player.getConnection(), blobs);
         }
         this.player.getChunkBlobs().clear();
@@ -178,24 +180,24 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
         injectRemoveAllEffects(this.player.getConnection(), rewriteData.getEntityId(), this.player.getProtocol());
         injectClearWeather(this.player.getConnection());
 
-        injectGameMode(this.player.getConnection(), packet.getPlayerGameType());
-        injectSetDifficulty(this.player.getConnection(), packet.getDifficulty());
-        injectGameRules(this.player.getConnection(), packet.getGamerules());
+        injectGameMode(this.player.getConnection(), packet.getGameType());
+        injectSetDifficulty(this.player.getConnection(), packet.getSettings().getGameDifficulty().ordinal());
+        injectGameRules(this.player.getConnection(), packet.getSettings().getRuleData().getRulesList());
 
         this.connection.sendPacket(this.player.getLoginData().getChunkRadius());
 
         // Client does not accept ChangeDimensionPacket when dimension is same as current dimension.
         // If we transfer between same dimensions we are attempting to do dimension change sequence which uses 2 dim changes
         // After client successfully changes dimension we receive PlayerActionPacket#DIMENSION_CHANGE_SUCCESS and continue in transfer
-        int newDimension = determineDimensionId(rewriteData.getDimension(), packet.getDimensionId());
+        int newDimension = determineDimensionId(rewriteData.getDimension(), packet.getSettings().getSpawnSettings().getDimension().getValue());
 
-        TransferCallback transferCallback = new TransferCallback(this.player, this.connection, oldConnection.getServerInfo(), packet.getDimensionId());
+        TransferCallback transferCallback = new TransferCallback(this.player, this.connection, oldConnection.getServerInfo(), packet.getSettings().getSpawnSettings().getDimension().getValue());
         rewriteData.setDimension(newDimension);
         rewriteData.setTransferCallback(transferCallback);
 
-        boolean fastTransfer = event.isTransferScreenAllowed() && newDimension != packet.getDimensionId();
+        boolean fastTransfer = event.isTransferScreenAllowed() && newDimension != packet.getSettings().getSpawnSettings().getDimension().getValue();
         if (fastTransfer) {
-            Vector3f fakePosition = packet.getPlayerPosition().add(2000, 0, 2000);
+            Vector3f fakePosition = packet.getPosition().add(2000, 0, 2000);
             injectPosition(this.player.getConnection(), fakePosition, packet.getRotation(), rewriteData.getEntityId());
             this.player.getConnection().setTransferQueueActive(true);
             injectDimensionChange(this.player.getConnection(), newDimension, fakePosition,
@@ -203,18 +205,18 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
             // Force client to exit first dim screen after one second
             this.player.getProxy().getScheduler().scheduleDelayed(() -> {
                 PlayStatusPacket statusPacket = new PlayStatusPacket();
-                statusPacket.setStatus(PlayStatusPacket.Status.PLAYER_SPAWN);
+                statusPacket.setStatus(PlayStatus.PLAYER_SPAWN);
                 this.player.getConnection().sendPacketImmediately(statusPacket);
             }, 40);
-        } else if (newDimension == packet.getDimensionId()) {
+        } else if (newDimension == packet.getSettings().getSpawnSettings().getDimension().getValue()) {
             // Transfer between different dimensions
-            injectPosition(this.player.getConnection(), packet.getPlayerPosition(), packet.getRotation(), rewriteData.getEntityId());
-            injectDimensionChange(this.player.getConnection(), newDimension, packet.getPlayerPosition(),
+            injectPosition(this.player.getConnection(), packet.getPosition(), packet.getRotation(), rewriteData.getEntityId());
+            injectDimensionChange(this.player.getConnection(), newDimension, packet.getPosition(),
                     rewriteData.getEntityId(), player.getProtocol(), false);
             transferCallback.onDimChangeSuccess(); // Simulate two dim-change behaviour
         } else {
-            injectPosition(this.player.getConnection(), packet.getPlayerPosition(), packet.getRotation(), rewriteData.getEntityId());
-            rewriteData.setDimension(packet.getDimensionId());
+            injectPosition(this.player.getConnection(), packet.getPosition(), packet.getRotation(), rewriteData.getEntityId());
+            rewriteData.setDimension(packet.getSettings().getSpawnSettings().getDimension().getValue());
             transferCallback.onDimChangeSuccess();
             transferCallback.onDimChangeSuccess();
         }
@@ -231,7 +233,7 @@ public class SwitchDownstreamHandler extends AbstractDownstreamHandler {
         }
 
         this.connection.disconnect();
-        this.player.sendMessage(new TranslationContainer("waterdog.downstream.transfer.failed", this.connection.getServerInfo().getServerName(), packet.getKickMessage()));
+        this.player.sendMessage(new TranslationContainer("waterdog.downstream.transfer.failed", this.connection.getServerInfo().getServerName(), packet.getMessages().getMessage()));
         return Signals.CANCEL;
     }
 }

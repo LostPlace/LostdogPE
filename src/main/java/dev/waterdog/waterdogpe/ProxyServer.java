@@ -290,11 +290,11 @@ public class ProxyServer {
                     .option(RakChannelOption.RAK_HANDLE_PING, true)
                     .option(RakChannelOption.RAK_MAX_MTU, this.getNetworkSettings().getMaximumMtu())
                     .option(RakChannelOption.RAK_PACKET_LIMIT, Integer.MAX_VALUE)
-                    .option(RakChannelOption.RAK_MAX_QUEUED_BYTES, 0)
+                    // Removed unsupported option
                     .option(RakChannelOption.RAK_SERVER_COOKIE_MODE, this.getNetworkSettings().enableCookies() ?
-                    .childOption(RakChannelOption.RAK_MAX_QUEUED_BYTES, 0)
-                    .childOption(RakChannelOption.RAK_PACKET_LIMIT, Integer.MAX_VALUE)
                             RakServerCookieMode.ACTIVE : RakServerCookieMode.INVALID)
+                    // Removed unsupported child option
+                    .childOption(RakChannelOption.RAK_PACKET_LIMIT, Integer.MAX_VALUE)
                     .childOption(RakChannelOption.RAK_SESSION_TIMEOUT, 10000L)
                     .childOption(RakChannelOption.RAK_ORDERING_CHANNELS, 1)
                     .handler(new OfflineServerChannelInitializer(this))

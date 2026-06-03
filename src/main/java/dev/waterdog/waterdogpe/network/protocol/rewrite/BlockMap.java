@@ -17,9 +17,9 @@ package dev.waterdog.waterdogpe.network.protocol.rewrite;
 
 import org.cloudburstmc.protocol.bedrock.data.LevelEventType;
 import org.cloudburstmc.protocol.bedrock.data.SoundEvent;
+import org.cloudburstmc.protocol.bedrock.data.actor.ActorDataMap;
+import org.cloudburstmc.protocol.bedrock.data.actor.ActorDataTypes;
 import org.cloudburstmc.protocol.bedrock.data.definitions.BlockDefinition;
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataMap;
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityDataTypes;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.network.protocol.rewrite.types.BlockPaletteRewrite;
 import dev.waterdog.waterdogpe.network.protocol.rewrite.types.RewriteData;
@@ -59,14 +59,14 @@ public class BlockMap implements BedrockPacketHandler {
 
     @Override
     public PacketSignal handle(LevelChunkPacket packet) {
-        ByteBuf from = packet.getData();
+        ByteBuf from = packet.getSerializedChunkData();
         ByteBuf to = AbstractByteBufAllocator.DEFAULT.ioBuffer(from.readableBytes());
 
         try {
-            boolean success = this.rewriteChunkData(from, to, packet.getSubChunksLength());
+            boolean success = this.rewriteChunkData(from, to, packet.getSubChunksCount());
             if (success) {
                 to.writeBytes(from); // Copy the rest
-                packet.setData(to.retain());
+                packet.setSerializedChunkData(to.retain());
             }
             return success ? PacketSignal.HANDLED : PacketSignal.UNHANDLED;
         } finally {
@@ -145,20 +145,20 @@ public class BlockMap implements BedrockPacketHandler {
             return PacketSignal.UNHANDLED;
         }
 
-        int runtimeId = packet.getExtraData();
-        packet.setExtraData(this.translateId(runtimeId));
+        int runtimeId = packet.getData();
+        packet.setData(this.translateId(runtimeId));
         return PacketSignal.HANDLED;
     }
 
     @Override
-    public PacketSignal handle(AddEntityPacket packet) {
-        if (!packet.getIdentifier().equals("minecraft:falling_block")) {
+    public PacketSignal handle(AddActorPacket packet) {
+        if (!packet.getActorType().equals("minecraft:falling_block")) {
             return PacketSignal.UNHANDLED;
         }
 
-        EntityDataMap metaData = packet.getMetadata();
-        int runtimeId = metaData.get(EntityDataTypes.VARIANT);
-        metaData.put(EntityDataTypes.VARIANT, this.translateId(runtimeId));
+        ActorDataMap metaData = packet.getActorData();
+        int runtimeId = metaData.get(ActorDataTypes.VARIANT);
+        metaData.put(ActorDataTypes.VARIANT, this.translateId(runtimeId));
         return PacketSignal.HANDLED;
     }
 }

@@ -29,6 +29,7 @@ import dev.waterdog.waterdogpe.security.SecurityManager;
 import dev.waterdog.waterdogpe.utils.types.TextContainer;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.codec.compat.BedrockCompat;
+import org.cloudburstmc.protocol.bedrock.data.PlayStatus;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacketHandler;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import org.cloudburstmc.protocol.common.PacketSignal;
@@ -86,8 +87,8 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
 
         PlayStatusPacket status = new PlayStatusPacket();
         status.setStatus((protocolVersion > WaterdogPE.version().latestProtocolVersion() ?
-                PlayStatusPacket.Status.LOGIN_FAILED_SERVER_OLD :
-                PlayStatusPacket.Status.LOGIN_FAILED_CLIENT_OLD));
+                PlayStatus.LOGIN_FAILED_SERVER_OLD :
+                PlayStatus.LOGIN_FAILED_CLIENT_OLD));
         this.session.sendPacketImmediately(status);
         this.session.disconnect();
         this.proxy.getLogger().warning("[{}] <-> Upstream has disconnected due to incompatible protocol (protocol={})", this.session.getSocketAddress(), protocolVersion);
@@ -97,7 +98,7 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
     @Override
     public PacketSignal handle(RequestNetworkSettingsPacket packet) {
         ProtocolVersion protocol;
-        if (!this.attemptLogin() || (protocol = this.checkVersion(packet.getProtocolVersion())) == null) {
+        if (!this.attemptLogin() || (protocol = this.checkVersion(packet.getClientNetworkVersion())) == null) {
             return PacketSignal.HANDLED;
         }
 
@@ -125,7 +126,7 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
     @Override
     public PacketSignal handle(LoginPacket packet) {
         ProtocolVersion protocol;
-        if (!this.attemptLogin() || (protocol = this.checkVersion(packet.getProtocolVersion())) == null) {
+        if (!this.attemptLogin() || (protocol = this.checkVersion(packet.getClientNetworkVersion())) == null) {
             return PacketSignal.HANDLED;
         }
 
@@ -147,12 +148,10 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
 
         this.session.setLogging(WaterdogPE.version().debug());
         try {
-            this.proxy.getLogger().debug("[{}] <-> Received login with authType: {} and payloadType: {}.", this.session.getSocketAddress(),
-                    packet.getAuthPayload().getClass().getSimpleName(), packet.getAuthPayload().getAuthType());
-
             try {
                 handshakeEntry = HandshakeUtils.processHandshake(this.session, packet, protocol, strictAuth);
             } catch (Exception e) {
+                e.printStackTrace();
                 this.onLoginFailed(null, e, proxy.translate(new TextContainer("disconnectReasons.authenticationDown")));
                 this.proxy.getLogger().info("[{}] <-> Upstream has disconnected due to down auth servers", this.session.getSocketAddress());
                 return PacketSignal.HANDLED;
@@ -216,7 +215,7 @@ public class LoginUpstreamHandler implements BedrockPacketHandler {
         }
 
         PlayStatusPacket status = new PlayStatusPacket();
-        status.setStatus(PlayStatusPacket.Status.LOGIN_SUCCESS);
+        status.setStatus(PlayStatus.LOGIN_SUCCESS);
         this.session.sendPacket(status);
         this.player.initPlayer();
     }

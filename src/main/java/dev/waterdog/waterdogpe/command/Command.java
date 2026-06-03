@@ -92,7 +92,7 @@ public abstract class Command {
         return new CommandData(this.name,
                 this.getDescription(),
                 Collections.emptySet(),
-                CommandPermission.ANY,
+                CommandPermissionLevel.ANY,
                 new CommandEnumData(this.name + "_aliases", aliases, false),
                 Collections.emptyList(),
                 overloads);
@@ -102,7 +102,7 @@ public abstract class Command {
         CommandParamData simpleData = new CommandParamData();
         simpleData.setName(this.name);
         simpleData.setOptional(true);
-        simpleData.setType(CommandParam.TEXT);
+        simpleData.setType(CommandParam.TYPE_ARG);
         return new CommandOverloadData[]{new CommandOverloadData(false, new CommandParamData[]{simpleData})};
     }
 }

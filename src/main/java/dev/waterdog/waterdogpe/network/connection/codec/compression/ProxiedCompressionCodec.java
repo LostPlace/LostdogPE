@@ -66,6 +66,7 @@ public class ProxiedCompressionCodec extends CompressionCodec {
 
     @Override
     protected CompressionAlgorithm getCompressionAlgorithm0(byte header) {
-        return CompressionType.fromHeaderId(header);
+        CompressionAlgorithm algorithm = CompressionType.fromHeaderId(header);
+        return algorithm != null ? algorithm : super.getCompressionAlgorithm0(header);
     }
 }

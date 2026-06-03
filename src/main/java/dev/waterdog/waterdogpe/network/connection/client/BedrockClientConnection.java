@@ -89,6 +89,7 @@ public class BedrockClientConnection extends SimpleChannelInboundHandler<Bedrock
             bridge.onBedrockBatch(this, batch);
         } else if (this.packetHandler != null) {
             for (BedrockPacketWrapper packet : batch.getPackets()) {
+                this.logInboundPacket(packet);
                 this.packetHandler.handlePacket(packet.getPacket());
             }
         } else {
@@ -98,6 +99,7 @@ public class BedrockClientConnection extends SimpleChannelInboundHandler<Bedrock
 
     @Override
     public void sendPacket(BedrockBatchWrapper wrapper) {
+        this.logOutboundBatch(wrapper);
         if (this.player.getProtocol().isBefore(ProtocolVersion.MINECRAFT_PE_1_20_60) &&
                 !Objects.equals(wrapper.getAlgorithm(), this.compressionStrategy.getDefaultCompression().getAlgorithm())) {
             wrapper.setCompressed(null); // Before 1.20.60 dynamic compression is not supported
@@ -112,6 +114,7 @@ public class BedrockClientConnection extends SimpleChannelInboundHandler<Bedrock
         this.player.getProxy().getEventManager().callEvent(event);
         if(event.isCancelled()) return;
 
+        this.logOutboundPacket(packet);
         this.channel.writeAndFlush(packet);
     }
 
@@ -121,6 +124,7 @@ public class BedrockClientConnection extends SimpleChannelInboundHandler<Bedrock
         this.player.getProxy().getEventManager().callEvent(event);
         if(event.isCancelled()) return;
 
+        this.logOutboundPacket(packet);
         this.channel.writeAndFlush(BedrockBatchWrapper.create(this.getSubClientId(), packet));
     }
 
@@ -239,6 +243,44 @@ public class BedrockClientConnection extends SimpleChannelInboundHandler<Bedrock
     @Override
     public void addDisconnectListener(Runnable listener) {
         this.disconnectListeners.add(listener);
+    }
+
+    private void logInboundPacket(BedrockPacketWrapper wrapper) {
+        if (!this.isPacketDebugEnabled()) {
+            return;
+        }
+
+        BedrockPacket packet = wrapper.getPacket();
+        if (packet != null) {
+            log.info("[PacketDebug][IN][downstream:{}] {}", this.serverInfo.getServerName(), packet);
+        } else {
+            log.info("[PacketDebug][IN][downstream:{}] <encoded packet id={}>", this.serverInfo.getServerName(), wrapper.getPacketId());
+        }
+    }
+
+    private void logOutboundPacket(BedrockPacket packet) {
+        if (packet != null && this.isPacketDebugEnabled()) {
+            log.info("[PacketDebug][OUT][downstream:{}] {}", this.serverInfo.getServerName(), packet);
+        }
+    }
+
+    private void logOutboundBatch(BedrockBatchWrapper batch) {
+        if (!this.isPacketDebugEnabled()) {
+            return;
+        }
+
+        for (BedrockPacketWrapper wrapper : batch.getPackets()) {
+            BedrockPacket packet = wrapper.getPacket();
+            if (packet != null) {
+                log.info("[PacketDebug][OUT][downstream:{}] {}", this.serverInfo.getServerName(), packet);
+            } else {
+                log.info("[PacketDebug][OUT][downstream:{}] <encoded packet id={}>", this.serverInfo.getServerName(), wrapper.getPacketId());
+            }
+        }
+    }
+
+    private boolean isPacketDebugEnabled() {
+        return this.player.getProxy().getConfiguration().isDebugPackets();
     }
 
     @Override

@@ -58,7 +58,7 @@ public class ConnectedUpstreamHandler extends AbstractUpstreamHandler implements
 
     @Override
     public PacketSignal handle(PlayerActionPacket packet) {
-        if (packet.getAction() != PlayerActionType.DIMENSION_CHANGE_SUCCESS) {
+        if (packet.getAction() != PlayerActionType.CHANGE_DIMENSION_ACK) {
             return PacketSignal.UNHANDLED;
         }
 
@@ -71,9 +71,9 @@ public class ConnectedUpstreamHandler extends AbstractUpstreamHandler implements
 
     @Override
     public final PacketSignal handle(TextPacket packet) {
-        PlayerChatEvent event = new PlayerChatEvent(this.player, packet.getMessage());
+        PlayerChatEvent event = new PlayerChatEvent(this.player, packet.getBody().getMessage());
         ProxyServer.getInstance().getEventManager().callEvent(event);
-        packet.setMessage(event.getMessage());
+        packet.getBody().setMessage(event.getMessage());
         if (event.isCancelled()) {
             return Signals.CANCEL;
         }
@@ -92,7 +92,7 @@ public class ConnectedUpstreamHandler extends AbstractUpstreamHandler implements
     @Override
     public PacketSignal handle(ClientCacheBlobStatusPacket packet) {
         if (this.player.getProtocol().isBefore(ProtocolVersion.MINECRAFT_PE_1_18_30)) {
-            this.player.getChunkBlobs().addAll(packet.getNaks());
+            this.player.getChunkBlobs().addAll(packet.getMissingIds()); //Todo: test
         }
         return PacketSignal.UNHANDLED;
     }

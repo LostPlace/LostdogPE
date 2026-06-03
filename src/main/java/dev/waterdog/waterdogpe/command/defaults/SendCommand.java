@@ -70,12 +70,12 @@ public class SendCommand extends Command {
         CommandParamData destination = new CommandParamData();
         destination.setName("destination");
         destination.setOptional(false);
-        destination.setType(CommandParam.TEXT);
+        destination.setType(CommandParam.RAW_TEXT);
 
         CommandParamData target = new CommandParamData();
         target.setName("target");
         target.setOptional(false);
-        target.setType(CommandParam.TEXT);
+        target.setType(CommandParam.RAW_TEXT);
 
         return new CommandOverloadData[]{new CommandOverloadData(false, new CommandParamData[]{destination, target})};
     }

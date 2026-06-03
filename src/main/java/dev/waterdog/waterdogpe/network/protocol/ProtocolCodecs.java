@@ -17,6 +17,7 @@ package dev.waterdog.waterdogpe.network.protocol;
 
 import dev.waterdog.waterdogpe.network.protocol.updaters.CodecUpdater419;
 import dev.waterdog.waterdogpe.network.protocol.updaters.ProtocolCodecUpdater;
+// Removed unused serializer import
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodec;
 import org.cloudburstmc.protocol.bedrock.packet.*;
@@ -42,33 +43,33 @@ public class ProtocolCodecs {
         HANDLED_PACKETS.add(TextPacket.class);
         HANDLED_PACKETS.add(StartGamePacket.class);
         HANDLED_PACKETS.add(AddPlayerPacket.class);
-        HANDLED_PACKETS.add(AddEntityPacket.class);
-        HANDLED_PACKETS.add(RemoveEntityPacket.class);
-        HANDLED_PACKETS.add(AddItemEntityPacket.class);
-        HANDLED_PACKETS.add(TakeItemEntityPacket.class);
-        HANDLED_PACKETS.add(MoveEntityAbsolutePacket.class);
+        HANDLED_PACKETS.add(AddActorPacket.class);
+        HANDLED_PACKETS.add(RemoveActorPacket.class);
+        HANDLED_PACKETS.add(AddItemActorPacket.class);
+        HANDLED_PACKETS.add(TakeItemActorPacket.class);
+        HANDLED_PACKETS.add(MoveActorAbsolutePacket.class);
         HANDLED_PACKETS.add(MovePlayerPacket.class);
         HANDLED_PACKETS.add(UpdateBlockPacket.class);
         HANDLED_PACKETS.add(AddPaintingPacket.class);
         HANDLED_PACKETS.add(LevelEventPacket.class);
-        HANDLED_PACKETS.add(EntityEventPacket.class);
+        HANDLED_PACKETS.add(ActorEventPacket.class);
         HANDLED_PACKETS.add(MobEffectPacket.class);
         HANDLED_PACKETS.add(UpdateAttributesPacket.class);
         HANDLED_PACKETS.add(MobEquipmentPacket.class);
         HANDLED_PACKETS.add(MobArmorEquipmentPacket.class);
         HANDLED_PACKETS.add(InteractPacket.class);
-        HANDLED_PACKETS.add(EntityPickRequestPacket.class);
+        HANDLED_PACKETS.add(ActorPickRequestPacket.class);
         HANDLED_PACKETS.add(PlayerActionPacket.class);
-        HANDLED_PACKETS.add(SetEntityDataPacket.class);
-        HANDLED_PACKETS.add(SetEntityMotionPacket.class);
-        HANDLED_PACKETS.add(SetEntityLinkPacket.class);
+        HANDLED_PACKETS.add(SetActorDataPacket.class);
+        HANDLED_PACKETS.add(SetActorMotionPacket.class);
+        HANDLED_PACKETS.add(SetActorLinkPacket.class);
         HANDLED_PACKETS.add(AnimatePacket.class);
         HANDLED_PACKETS.add(RespawnPacket.class);
         HANDLED_PACKETS.add(SetDifficultyPacket.class);
         HANDLED_PACKETS.add(ChangeDimensionPacket.class);
         HANDLED_PACKETS.add(SetPlayerGameTypePacket.class);
         HANDLED_PACKETS.add(PlayerListPacket.class);
-        HANDLED_PACKETS.add(EventPacket.class);
+        HANDLED_PACKETS.add(LevelEventPacket.class);
         HANDLED_PACKETS.add(RequestChunkRadiusPacket.class);
         HANDLED_PACKETS.add(GameRulesChangedPacket.class);
         HANDLED_PACKETS.add(BossEventPacket.class);
@@ -81,12 +82,12 @@ public class ProtocolCodecs {
         HANDLED_PACKETS.add(RemoveObjectivePacket.class);
         HANDLED_PACKETS.add(SetDisplayObjectivePacket.class);
         HANDLED_PACKETS.add(SetScorePacket.class);
-        HANDLED_PACKETS.add(MoveEntityDeltaPacket.class);
+        HANDLED_PACKETS.add(MoveActorDeltaPacket.class);
         HANDLED_PACKETS.add(SetScoreboardIdentityPacket.class);
         HANDLED_PACKETS.add(SetLocalPlayerAsInitializedPacket.class);
         HANDLED_PACKETS.add(NetworkStackLatencyPacket.class);
         HANDLED_PACKETS.add(SpawnParticleEffectPacket.class);
-        HANDLED_PACKETS.add(AvailableEntityIdentifiersPacket.class);
+        HANDLED_PACKETS.add(AvailableActorIdentifiersPacket.class);
         HANDLED_PACKETS.add(NetworkChunkPublisherUpdatePacket.class);
         HANDLED_PACKETS.add(LevelSoundEventPacket.class);
         HANDLED_PACKETS.add(ClientCacheStatusPacket.class);
@@ -97,7 +98,7 @@ public class ProtocolCodecs {
         HANDLED_PACKETS.add(DebugInfoPacket.class);
         HANDLED_PACKETS.add(PacketViolationWarningPacket.class);
         HANDLED_PACKETS.add(AnimateEntityPacket.class);
-        HANDLED_PACKETS.add(ItemComponentPacket.class);
+        HANDLED_PACKETS.add(ItemRegistryPacket.class);
         HANDLED_PACKETS.add(NpcDialoguePacket.class);
         HANDLED_PACKETS.add(BiomeDefinitionListPacket.class);
         HANDLED_PACKETS.add(ChangeMobPropertyPacket.class);
@@ -112,12 +113,12 @@ public class ProtocolCodecs {
         HANDLED_PACKETS.add(PlayerAuthInputPacket.class);
         HANDLED_PACKETS.add(ModalFormRequestPacket.class);
         HANDLED_PACKETS.add(ModalFormResponsePacket.class);
-        HANDLED_PACKETS.add(BlockEntityDataPacket.class);
+        HANDLED_PACKETS.add(BlockActorDataPacket.class);
         HANDLED_PACKETS.add(InventoryTransactionPacket.class);
         HANDLED_PACKETS.add(ClientboundCloseFormPacket.class);
         HANDLED_PACKETS.add(UpdateEquipPacket.class);
         HANDLED_PACKETS.add(CameraInstructionPacket.class);
-        HANDLED_PACKETS.add(MovementPredictionSyncPacket.class);
+        HANDLED_PACKETS.add(ClientMovementPredictionSyncPacket.class);
         HANDLED_PACKETS.add(PlayerUpdateEntityOverridesPacket.class);
         HANDLED_PACKETS.add(PlayerLocationPacket.class);
         HANDLED_PACKETS.add(CameraPresetsPacket.class);
@@ -140,6 +141,7 @@ public class ProtocolCodecs {
     public static BedrockCodec buildCodec(BedrockCodec baseCodec) {
         BedrockCodec.Builder builder = baseCodec.toBuilder();
         DEFAULT_UPDATER.updateCodec(builder, baseCodec);
+        // Serializer registration removed; handled by protocol library
 
         for (ProtocolCodecUpdater updater : UPDATERS) {
             if (baseCodec.getProtocolVersion() >= updater.getRequiredVersion()) {

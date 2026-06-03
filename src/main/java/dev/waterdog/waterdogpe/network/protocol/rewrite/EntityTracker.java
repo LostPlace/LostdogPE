@@ -14,8 +14,10 @@
  */
 
 package dev.waterdog.waterdogpe.network.protocol.rewrite;
+import org.cloudburstmc.protocol.bedrock.data.ActorLinkType;
+import org.cloudburstmc.protocol.bedrock.data.PlayerListPacketType;
 import org.cloudburstmc.protocol.bedrock.data.ScoreInfo;
-import org.cloudburstmc.protocol.bedrock.data.entity.EntityLinkData;
+import org.cloudburstmc.protocol.bedrock.data.actor.ActorLink;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.network.protocol.user.PlayerRewriteUtils;
 import dev.waterdog.waterdogpe.player.ProxiedPlayer;
@@ -41,34 +43,34 @@ public class EntityTracker implements BedrockPacketHandler {
 
     @Override
     public PacketSignal handle(AddPlayerPacket packet) {
-        this.player.getEntities().add(packet.getRuntimeEntityId());
+        this.player.getEntities().add(packet.getTargetRuntimeID());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
-    public PacketSignal handle(AddEntityPacket packet) {
-        this.player.getEntities().add(packet.getRuntimeEntityId());
-        for (EntityLinkData entityLink : packet.getEntityLinks()) {
-            this.handleEntityLink(entityLink);
+    public PacketSignal handle(AddActorPacket packet) {
+        this.player.getEntities().add(packet.getTargetRuntimeID());
+        for (ActorLink actorLink : packet.getActorLinks()) {
+            this.handleActorLink(actorLink);
         }
         return PacketSignal.UNHANDLED;
     }
 
     @Override
-    public PacketSignal handle(AddItemEntityPacket packet) {
-        this.player.getEntities().add(packet.getRuntimeEntityId());
+    public PacketSignal handle(AddItemActorPacket packet) {
+        this.player.getEntities().add(packet.getTargetRuntimeID());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public PacketSignal handle(AddPaintingPacket packet) {
-        this.player.getEntities().add(packet.getRuntimeEntityId());
+        this.player.getEntities().add(packet.getTargetRuntimeID());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
-    public PacketSignal handle(RemoveEntityPacket packet) {
-        this.player.getEntities().remove(packet.getUniqueEntityId());
+    public PacketSignal handle(RemoveActorPacket packet) {
+        this.player.getEntities().remove(packet.getTargetActorID());
         return PacketSignal.UNHANDLED;
     }
 
@@ -76,9 +78,9 @@ public class EntityTracker implements BedrockPacketHandler {
     public PacketSignal handle(PlayerListPacket packet) {
         List<PlayerListPacket.Entry> entries = packet.getEntries();
         for (PlayerListPacket.Entry entry : entries) {
-            if (packet.getAction() == PlayerListPacket.Action.ADD) {
+            if (packet.getAction() == PlayerListPacketType.ADD) {
                 this.player.getPlayers().add(entry.getUuid());
-            } else if (packet.getAction() == PlayerListPacket.Action.REMOVE) {
+            } else if (packet.getAction() == PlayerListPacketType.REMOVE) {
                 this.player.getPlayers().remove(entry.getUuid());
             }
         }
@@ -86,23 +88,23 @@ public class EntityTracker implements BedrockPacketHandler {
     }
 
     @Override
-    public PacketSignal handle(SetEntityLinkPacket packet) {
-        this.handleEntityLink(packet.getEntityLink());
+    public PacketSignal handle(SetActorLinkPacket packet) {
+        this.handleActorLink(packet.getLink());
         return PacketSignal.UNHANDLED;
     }
 
-    private void handleEntityLink(EntityLinkData entityLink) {
-        if (entityLink.getType() == EntityLinkData.Type.REMOVE) {
-            this.player.getEntityLinks().remove(entityLink.getFrom());
+    private void handleActorLink(ActorLink ActorLink) {
+        if (ActorLink.getType() == ActorLinkType.NONE) {
+            this.player.getEntityLinks().remove(ActorLink.getTargetA());
         } else {
-            this.player.getEntityLinks().put(entityLink.getFrom(), entityLink.getTo());
+            this.player.getEntityLinks().put(ActorLink.getTargetA(), ActorLink.getTargetB());
         }
     }
 
     @Override
-    public PacketSignal handle(SetEntityDataPacket packet) {
-        if (packet.getRuntimeEntityId() == this.player.getRewriteData().getOriginalEntityId()) {
-            boolean immobile = PlayerRewriteUtils.checkForImmobileFlag(packet.getMetadata());
+    public PacketSignal handle(SetActorDataPacket packet) {
+        if (packet.getTargetRuntimeID() == this.player.getRewriteData().getOriginalEntityId()) {
+            boolean immobile = PlayerRewriteUtils.checkForImmobileFlag(packet.getActorData());
             this.player.getRewriteData().setImmobileFlag(immobile);
         }
         return PacketSignal.UNHANDLED;
@@ -110,26 +112,26 @@ public class EntityTracker implements BedrockPacketHandler {
 
     @Override
     public final PacketSignal handle(SetDisplayObjectivePacket packet) {
-        this.player.getScoreboards().add(packet.getObjectiveId());
+        this.player.getScoreboards().add(packet.getObjectiveName());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public final PacketSignal handle(RemoveObjectivePacket packet) {
-        this.player.getScoreboards().remove(packet.getObjectiveId());
+        this.player.getScoreboards().remove(packet.getObjectiveName());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public final PacketSignal handle(SetScorePacket packet) {
-        switch(packet.getAction()) {
+        switch(packet.getScorePacketType()) {
             case SET:
-                for(ScoreInfo info : packet.getInfos()) {
+                for(ScoreInfo info : packet.getScoreInfo()) {
                     this.player.getScoreInfos().put(info.getScoreboardId(), info);
                 }
                 break;
             case REMOVE:
-                for(ScoreInfo info : packet.getInfos()) {
+                for(ScoreInfo info : packet.getScoreInfo()) {
                     this.player.getScoreInfos().remove(info.getScoreboardId());
                 }
                 break;
@@ -139,9 +141,9 @@ public class EntityTracker implements BedrockPacketHandler {
 
     @Override
     public final PacketSignal handle(BossEventPacket packet) {
-        switch (packet.getAction()) {
-            case CREATE -> this.player.getBossbars().add(packet.getBossUniqueEntityId());
-            case REMOVE -> this.player.getBossbars().remove(packet.getBossUniqueEntityId());
+        switch (packet.getEventType()) {
+            case ADD -> this.player.getBossbars().add(packet.getTargetActorID());
+            case REMOVE -> this.player.getBossbars().remove(packet.getTargetActorID());
         }
         return PacketSignal.UNHANDLED;
     }

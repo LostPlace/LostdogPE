@@ -75,13 +75,13 @@ public abstract class AbstractDownstreamHandler implements ProxyPacketHandler {
     }
 
     @Override
-    public PacketSignal handle(ItemComponentPacket packet) {
+    public PacketSignal handle(ItemRegistryPacket packet) {
         if (!this.player.acceptItemComponentPacket()) {
             return Signals.CANCEL;
         }
         player.setAcceptItemComponentPacket(false);
         if (this.player.getProtocol().isAfterOrEqual(ProtocolVersion.MINECRAFT_PE_1_21_60)) {
-            setItemDefinitions(packet.getItems());
+            setItemDefinitions(packet.getItemData());
         }
         return PacketSignal.UNHANDLED;
     }
@@ -156,27 +156,27 @@ public abstract class AbstractDownstreamHandler implements ProxyPacketHandler {
 
     @Override
     public PacketSignal handle(ChunkRadiusUpdatedPacket packet) {
-        this.player.getLoginData().getChunkRadius().setRadius(packet.getRadius());
+        this.player.getLoginData().getChunkRadius().setChunkRadius(packet.getChunkRadius());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public PacketSignal handle(ChangeDimensionPacket packet) {
-        this.player.getRewriteData().setDimension(packet.getDimension());
+        this.player.getRewriteData().setDimension(packet.getDimension().getValue());
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public PacketSignal handle(ClientCacheMissResponsePacket packet) {
         if (this.player.getProtocol().isBefore(ProtocolVersion.MINECRAFT_PE_1_18_30)) {
-            this.player.getChunkBlobs().removeAll(packet.getBlobs().keySet());
+            this.player.getChunkBlobs().removeAll(packet.getMissingBlobs().keySet());
         }
         return PacketSignal.UNHANDLED;
     }
 
     @Override
     public PacketSignal handle(CameraPresetsPacket packet) {
-        setCameraPresetDefinitions(packet.getPresets());
+        setCameraPresetDefinitions(packet.getCameraPresets());
         return PacketSignal.UNHANDLED;
     }
 
@@ -190,7 +190,7 @@ public abstract class AbstractDownstreamHandler implements ProxyPacketHandler {
                 return Signals.CANCEL;
             }
             case LOGIN_FAILED_CLIENT_OLD, LOGIN_FAILED_SERVER_OLD -> message = "Incompatible version";
-            case FAILED_SERVER_FULL_SUB_CLIENT -> message = "Server is full";
+            case LOGIN_FAILED_SERVER_FULL_SUB_CLIENT -> message = "Server is full";
             default -> {
                 return PacketSignal.UNHANDLED;
             }
@@ -233,7 +233,7 @@ public abstract class AbstractDownstreamHandler implements ProxyPacketHandler {
         SimpleDefinitionRegistry.Builder<NamedDefinition> registry = SimpleDefinitionRegistry.builder();
         int id = 0;
         for (CameraPreset preset : presets) {
-            registry.add(new SimpleNamedDefinition(preset.getIdentifier(), id++));
+            registry.add(new SimpleNamedDefinition(preset.getName(), id++));
         }
         codecHelper.setCameraPresetDefinitions(registry.build());
     }

@@ -20,6 +20,7 @@ import dev.waterdog.waterdogpe.network.connection.client.ClientConnection;
 import dev.waterdog.waterdogpe.network.connection.handler.ReconnectReason;
 import dev.waterdog.waterdogpe.network.protocol.registry.FakeDefinitionRegistry;
 import org.cloudburstmc.protocol.bedrock.codec.BedrockCodecHelper;
+import org.cloudburstmc.protocol.bedrock.data.ResourcePackResponse;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.event.defaults.InitialServerConnectedEvent;
 import dev.waterdog.waterdogpe.network.serverinfo.ServerInfo;
@@ -59,7 +60,7 @@ public class InitialHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(ServerToClientHandshakePacket packet) {
         try {
-            SignedJWT saltJwt = SignedJWT.parse(packet.getJwt());
+            SignedJWT saltJwt = SignedJWT.parse(packet.getHandshakeWebToken());
             URI x5u = saltJwt.getHeader().getX509CertURL();
             ECPublicKey serverKey = EncryptionUtils.parseKey(x5u.toASCIIString());
             SecretKey key = EncryptionUtils.getSecretKey(
@@ -83,7 +84,7 @@ public class InitialHandler extends AbstractDownstreamHandler {
             return PacketSignal.UNHANDLED;
         }
         ResourcePackClientResponsePacket response = new ResourcePackClientResponsePacket();
-        response.setStatus(ResourcePackClientResponsePacket.Status.HAVE_ALL_PACKS);
+        response.setResponse(ResourcePackResponse.DOWNLOADING_FINISHED);
         this.connection.sendPacket(response);
         return Signals.CANCEL;
     }
@@ -94,7 +95,7 @@ public class InitialHandler extends AbstractDownstreamHandler {
             return PacketSignal.UNHANDLED;
         }
         ResourcePackClientResponsePacket response = new ResourcePackClientResponsePacket();
-        response.setStatus(ResourcePackClientResponsePacket.Status.COMPLETED);
+        response.setResponse(ResourcePackResponse.RESOURCE_PACK_STACK_FINISHED);
         this.connection.sendPacket(response);
         return Signals.CANCEL;
     }
@@ -102,13 +103,13 @@ public class InitialHandler extends AbstractDownstreamHandler {
     @Override
     public final PacketSignal handle(StartGamePacket packet) {
         RewriteData rewriteData = this.player.getRewriteData();
-        rewriteData.setOriginalEntityId(packet.getRuntimeEntityId());
+        rewriteData.setOriginalEntityId(packet.getRuntimeID());
         rewriteData.setEntityId(ThreadLocalRandom.current().nextInt(10000, 15000));
-        rewriteData.setGameRules(packet.getGamerules());
-        rewriteData.setDimension(packet.getDimensionId());
-        rewriteData.setSpawnPosition(packet.getPlayerPosition());
-        packet.setRuntimeEntityId(rewriteData.getEntityId());
-        packet.setUniqueEntityId(rewriteData.getEntityId());
+        rewriteData.setGameRules(packet.getSettings().getRuleData().getRulesList());
+        rewriteData.setDimension(packet.getSettings().getSpawnSettings().getDimension().getValue());
+        rewriteData.setSpawnPosition(packet.getPosition());
+        packet.setRuntimeID(rewriteData.getEntityId());
+        packet.setEntityID(rewriteData.getEntityId());
         packet.setLevelName(rewriteData.getProxyName());
 
         // Starting with 419 server does not send vanilla blocks to client

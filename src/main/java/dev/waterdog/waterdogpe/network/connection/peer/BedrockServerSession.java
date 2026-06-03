@@ -15,6 +15,7 @@
 
 package dev.waterdog.waterdogpe.network.connection.peer;
 
+import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.network.connection.ProxiedConnection;
 import dev.waterdog.waterdogpe.network.connection.codec.batch.BatchFlags;
 import dev.waterdog.waterdogpe.network.connection.codec.server.PacketQueueHandler;
@@ -27,6 +28,7 @@ import org.cloudburstmc.protocol.bedrock.BedrockDisconnectReasons;
 import org.cloudburstmc.protocol.bedrock.BedrockPeer;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
 import org.cloudburstmc.protocol.bedrock.PacketDirection;
+import org.cloudburstmc.protocol.bedrock.data.payload.connection.DisconnectPacketMessages;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockBatchWrapper;
 import org.cloudburstmc.protocol.bedrock.netty.BedrockPacketWrapper;
 import org.cloudburstmc.protocol.bedrock.packet.BedrockPacket;
@@ -45,6 +47,10 @@ public class BedrockServerSession extends BedrockSession implements ProxiedConne
 
     @Override
     protected void onPacket(BedrockPacketWrapper packet) {
+        if (!(this.packetHandler instanceof ProxyBatchBridge)) {
+            this.logInboundPacket(packet);
+        }
+
         if (this.packetHandler instanceof ProxyBatchBridge bridge) {
             PacketSignal signal = bridge.handlePacket(packet.getPacket());
             if (signal != Signals.CANCEL) {
@@ -66,26 +72,34 @@ public class BedrockServerSession extends BedrockSession implements ProxiedConne
     }
 
     public void sendPacket(BedrockBatchWrapper batch) {
+        this.logOutboundBatch(batch);
         this.getPeer().sendPacket(batch);
     }
 
     @Override
+    public void sendPacket(BedrockPacket packet) {
+        this.logOutboundPacket(packet);
+        super.sendPacket(packet);
+    }
+
+    @Override
     public void sendPacketImmediately(BedrockPacket packet) {
+        this.logOutboundPacket(packet);
         BedrockBatchWrapper batch = BedrockBatchWrapper.create(this.subClientId, packet);
         batch.setFlag(BatchFlags.SKIP_QUEUE);
         this.getPeer().sendPacket(batch);
     }
 
     @Override
-    public void disconnect(CharSequence reason, boolean hideReason) {
+    public void disconnect(String reason, boolean hideReason) {
         this.checkForClosed();
 
         DisconnectPacket packet = new DisconnectPacket();
         if (reason == null || hideReason) {
-            packet.setMessageSkipped(true);
+            packet.setSkipMessage(true);
             reason = BedrockDisconnectReasons.DISCONNECTED;
         }
-        packet.setKickMessage(reason);
+        packet.setMessages(new DisconnectPacketMessages(reason, reason));
         this.sendPacketImmediately(packet);
     }
 
@@ -151,5 +165,44 @@ public class BedrockServerSession extends BedrockSession implements ProxiedConne
     @Override
     public PacketDirection getPacketDirection() {
         return PacketDirection.CLIENT_BOUND;
+    }
+
+    private void logInboundPacket(BedrockPacketWrapper wrapper) {
+        if (!isPacketDebugEnabled()) {
+            return;
+        }
+
+        BedrockPacket packet = wrapper.getPacket();
+        if (packet != null) {
+            log.info("[PacketDebug][IN][upstream:{}] {}", this.getSocketAddress(), packet);
+        } else {
+            log.info("[PacketDebug][IN][upstream:{}] <encoded packet id={}>", this.getSocketAddress(), wrapper.getPacketId());
+        }
+    }
+
+    private void logOutboundPacket(BedrockPacket packet) {
+        if (packet != null && isPacketDebugEnabled()) {
+            log.info("[PacketDebug][OUT][upstream:{}] {}", this.getSocketAddress(), packet);
+        }
+    }
+
+    private void logOutboundBatch(BedrockBatchWrapper batch) {
+        if (!isPacketDebugEnabled()) {
+            return;
+        }
+
+        for (BedrockPacketWrapper wrapper : batch.getPackets()) {
+            BedrockPacket packet = wrapper.getPacket();
+            if (packet != null) {
+                log.info("[PacketDebug][OUT][upstream:{}] {}", this.getSocketAddress(), packet);
+            } else {
+                log.info("[PacketDebug][OUT][upstream:{}] <encoded packet id={}>", this.getSocketAddress(), wrapper.getPacketId());
+            }
+        }
+    }
+
+    private static boolean isPacketDebugEnabled() {
+        ProxyServer proxy = ProxyServer.getInstance();
+        return proxy != null && proxy.getConfiguration().isDebugPackets();
     }
 }

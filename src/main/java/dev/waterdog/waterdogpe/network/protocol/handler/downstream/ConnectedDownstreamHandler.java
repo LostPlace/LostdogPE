@@ -19,6 +19,7 @@ import dev.waterdog.waterdogpe.network.connection.client.ClientConnection;
 import dev.waterdog.waterdogpe.network.connection.handler.ReconnectReason;
 import dev.waterdog.waterdogpe.network.protocol.handler.PluginPacketHandler;
 import org.cloudburstmc.protocol.bedrock.PacketDirection;
+import org.cloudburstmc.protocol.bedrock.data.PlayStatus;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.event.defaults.FastTransferRequestEvent;
 import dev.waterdog.waterdogpe.event.defaults.PostTransferCompleteEvent;
@@ -51,7 +52,7 @@ public class ConnectedDownstreamHandler extends AbstractDownstreamHandler {
 
     @Override
     public PacketSignal handle(PlayStatusPacket packet) {
-        if (!this.player.acceptPlayStatus() || packet.getStatus() != PlayStatusPacket.Status.PLAYER_SPAWN) {
+        if (!this.player.acceptPlayStatus() || packet.getStatus() != PlayStatus.PLAYER_SPAWN) {
             return PacketSignal.UNHANDLED;
         }
 
@@ -62,7 +63,7 @@ public class ConnectedDownstreamHandler extends AbstractDownstreamHandler {
         }
 
         SetLocalPlayerAsInitializedPacket initializedPacket = new SetLocalPlayerAsInitializedPacket();
-        initializedPacket.setRuntimeEntityId(rewriteData.getEntityId());
+        initializedPacket.setPlayerID(rewriteData.getEntityId());
         this.connection.sendPacket(initializedPacket);
 
         PostTransferCompleteEvent event = new PostTransferCompleteEvent(this.connection, this.player);
@@ -76,12 +77,12 @@ public class ConnectedDownstreamHandler extends AbstractDownstreamHandler {
             return PacketSignal.UNHANDLED;
         }
 
-        ServerInfo serverInfo = this.player.getProxy().getServerInfo(packet.getAddress());
+        ServerInfo serverInfo = this.player.getProxy().getServerInfo(packet.getServerAddress());
         if (serverInfo == null) {
-            serverInfo = this.player.getProxy().getServerInfo(packet.getAddress(), packet.getPort());
+            serverInfo = this.player.getProxy().getServerInfo(packet.getServerAddress(), packet.getServerPort());
         }
 
-        FastTransferRequestEvent event = new FastTransferRequestEvent(serverInfo, this.player, packet.getAddress(), packet.getPort());
+        FastTransferRequestEvent event = new FastTransferRequestEvent(serverInfo, this.player, packet.getServerAddress(), packet.getServerPort());
         this.player.getProxy().getEventManager().callEvent(event);
 
         if (!event.isCancelled() && event.getServerInfo() != null) {
@@ -93,10 +94,10 @@ public class ConnectedDownstreamHandler extends AbstractDownstreamHandler {
 
     @Override
     public final PacketSignal handle(DisconnectPacket packet) {
-        if (this.player.sendToFallback(this.connection.getServerInfo(), ReconnectReason.SERVER_KICK, packet.getKickMessage())) {
+        if (this.player.sendToFallback(this.connection.getServerInfo(), ReconnectReason.SERVER_KICK, packet.getMessages().getMessage())) {
             return Signals.CANCEL;
         }
-        this.player.disconnect(new TranslationContainer("waterdog.downstream.kicked", packet.getKickMessage()));
+        this.player.disconnect(new TranslationContainer("waterdog.downstream.kicked", packet.getMessages().getMessage()));
         return Signals.CANCEL;
     }
 }

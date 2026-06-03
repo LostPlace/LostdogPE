@@ -28,8 +28,12 @@ import dev.waterdog.waterdogpe.network.protocol.handler.downstream.SwitchDownstr
 import lombok.Getter;
 import lombok.Setter;
 import org.cloudburstmc.protocol.bedrock.data.ScoreInfo;
+import org.cloudburstmc.protocol.bedrock.data.TextPacketBodyType;
+import org.cloudburstmc.protocol.bedrock.data.TextPacketType;
 import org.cloudburstmc.protocol.bedrock.data.command.CommandOriginData;
 import org.cloudburstmc.protocol.bedrock.data.command.CommandOriginType;
+import org.cloudburstmc.protocol.bedrock.data.payload.text.MessageOnly;
+import org.cloudburstmc.protocol.bedrock.data.payload.text.TextPacketBody;
 import org.cloudburstmc.protocol.bedrock.packet.*;
 import dev.waterdog.waterdogpe.ProxyServer;
 import dev.waterdog.waterdogpe.command.CommandSender;
@@ -378,7 +382,7 @@ public class ProxiedPlayer implements CommandSender {
         this.proxy.getEventManager().callEvent(event);
 
         if (this.connection != null && this.connection.isConnected()) {
-            this.connection.disconnect(reason);
+            this.connection.disconnect(reason.toString());
         }
 
         if (this.clientConnection != null) {
@@ -502,10 +506,13 @@ public class ProxiedPlayer implements CommandSender {
             return; // Client wont accept empty string
         }
 
+        final MessageOnly messageOnly = new MessageOnly();
+        messageOnly.setMessage(message);
+
         TextPacket packet = new TextPacket();
-        packet.setType(TextPacket.Type.RAW);
-        packet.setXuid(this.getXuid());
-        packet.setMessage(message);
+        packet.setMessageType(TextPacketType.RAW);
+        packet.setSendersXUID(this.getXuid());
+        packet.setBody(messageOnly);
         this.sendPacket(packet);
     }
 
@@ -527,17 +534,20 @@ public class ProxiedPlayer implements CommandSender {
         if (message.charAt(0) == '/') {
             CommandRequestPacket packet = new CommandRequestPacket();
             packet.setCommand(message);
-            packet.setCommandOriginData(new CommandOriginData(CommandOriginType.PLAYER, this.getUniqueId(), "", 0L));
+            packet.setCommandOrigin(new CommandOriginData(CommandOriginType.PLAYER, this.getUniqueId(), "", 0L));
             packet.setInternal(false);
             connection.sendPacket(packet);
             return;
         }
 
+        final MessageOnly messageOnly = new MessageOnly();
+        messageOnly.setMessage(message);
+
         TextPacket packet = new TextPacket();
-        packet.setType(TextPacket.Type.CHAT);
-        packet.setSourceName(this.getName());
-        packet.setXuid(this.getXuid());
-        packet.setMessage(message);
+        packet.setMessageType(TextPacketType.CHAT);
+        packet.setPlatformId(this.getName());
+        packet.setSendersXUID(this.getXuid());
+        packet.setBody(messageOnly);
         connection.sendPacket(packet);
     }
 
@@ -548,10 +558,13 @@ public class ProxiedPlayer implements CommandSender {
      * @param subtitle the subtitle, which will be displayed below the popup
      */
     public void sendPopup(String message, String subtitle) {
+        final MessageOnly messageOnly = new MessageOnly();
+        messageOnly.setMessage(message);
+
         TextPacket packet = new TextPacket();
-        packet.setType(TextPacket.Type.POPUP);
-        packet.setMessage(message);
-        packet.setXuid(this.getXuid());
+        packet.setMessageType(TextPacketType.POPUP);
+        packet.setBody(messageOnly);
+        packet.setSendersXUID(this.getXuid());
         this.sendPacket(packet);
     }
 
@@ -561,10 +574,13 @@ public class ProxiedPlayer implements CommandSender {
      * @param message the tip message to send
      */
     public void sendTip(String message) {
+        final MessageOnly messageOnly = new MessageOnly();
+        messageOnly.setMessage(message);
+
         TextPacket packet = new TextPacket();
-        packet.setType(TextPacket.Type.TIP);
-        packet.setMessage(message);
-        packet.setXuid(this.getXuid());
+        packet.setMessageType(TextPacketType.TIP);
+        packet.setBody(messageOnly);
+        packet.setSendersXUID(this.getXuid());
         this.sendPacket(packet);
     }
 
@@ -575,8 +591,8 @@ public class ProxiedPlayer implements CommandSender {
      */
     public void setSubtitle(String subtitle) {
         SetTitlePacket packet = new SetTitlePacket();
-        packet.setType(SetTitlePacket.Type.SUBTITLE);
-        packet.setText(subtitle);
+        packet.setTitleType(SetTitlePacket.TitleType.SUBTITLE);
+        packet.setTitleText(subtitle);
         packet.setXuid(this.getXuid());
         packet.setPlatformOnlineId("");
         this.sendPacket(packet);
@@ -591,12 +607,12 @@ public class ProxiedPlayer implements CommandSender {
      */
     public void setTitleAnimationTimes(int fadein, int duration, int fadeout) {
         SetTitlePacket packet = new SetTitlePacket();
-        packet.setType(SetTitlePacket.Type.TIMES);
+        packet.setTitleType(SetTitlePacket.TitleType.TIMES);
         packet.setFadeInTime(fadein);
         packet.setStayTime(duration);
         packet.setFadeOutTime(fadeout);
         packet.setXuid(this.getXuid());
-        packet.setText("");
+        packet.setTitleText("");
         packet.setPlatformOnlineId("");
         this.sendPacket(packet);
     }
@@ -608,8 +624,8 @@ public class ProxiedPlayer implements CommandSender {
      */
     private void setTitle(String text) {
         SetTitlePacket packet = new SetTitlePacket();
-        packet.setType(SetTitlePacket.Type.TITLE);
-        packet.setText(text);
+        packet.setTitleType(SetTitlePacket.TitleType.TITLE);
+        packet.setTitleText(text);
         packet.setXuid(this.getXuid());
         packet.setPlatformOnlineId("");
         this.sendPacket(packet);
@@ -620,8 +636,8 @@ public class ProxiedPlayer implements CommandSender {
      */
     public void clearTitle() {
         SetTitlePacket packet = new SetTitlePacket();
-        packet.setType(SetTitlePacket.Type.CLEAR);
-        packet.setText("");
+        packet.setTitleType(SetTitlePacket.TitleType.CLEAR);
+        packet.setTitleText("");
         packet.setXuid(this.getXuid());
         packet.setPlatformOnlineId("");
         this.sendPacket(packet);
@@ -632,8 +648,8 @@ public class ProxiedPlayer implements CommandSender {
      */
     public void resetTitleSettings() {
         SetTitlePacket packet = new SetTitlePacket();
-        packet.setType(SetTitlePacket.Type.RESET);
-        packet.setText("");
+        packet.setTitleType(SetTitlePacket.TitleType.RESET);
+        packet.setTitleText("");
         packet.setXuid(this.getXuid());
         packet.setPlatformOnlineId("");
         this.sendPacket(packet);
@@ -689,8 +705,8 @@ public class ProxiedPlayer implements CommandSender {
     public void redirectServer(ServerInfo serverInfo) {
         Preconditions.checkNotNull(serverInfo, "Server info can not be null!");
         TransferPacket packet = new TransferPacket();
-        packet.setAddress(serverInfo.getPublicAddress().getHostString());
-        packet.setPort(serverInfo.getPublicAddress().getPort());
+        packet.setServerAddress(serverInfo.getPublicAddress().getHostString());
+        packet.setServerPort(serverInfo.getPublicAddress().getPort());
         this.sendPacket(packet);
     }
 

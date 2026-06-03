@@ -51,7 +51,7 @@ public class BlockMapSimple extends BlockMap {
     }
 
     @Override
-    public PacketSignal handle(AddEntityPacket packet) {
+    public PacketSignal handle(AddActorPacket packet) {
         return PacketSignal.UNHANDLED;
     }
 }

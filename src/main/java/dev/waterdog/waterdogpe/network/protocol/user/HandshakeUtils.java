@@ -28,7 +28,6 @@ import dev.waterdog.waterdogpe.utils.config.proxy.ProxyConfig;
 import lombok.Getter;
 import lombok.extern.log4j.Log4j2;
 import org.cloudburstmc.protocol.bedrock.BedrockSession;
-import org.cloudburstmc.protocol.bedrock.data.auth.CertificateChainPayload;
 import org.cloudburstmc.protocol.bedrock.packet.LoginPacket;
 import org.cloudburstmc.protocol.bedrock.packet.ServerToClientHandshakePacket;
 import org.cloudburstmc.protocol.bedrock.util.ChainValidationResult;
@@ -131,7 +130,15 @@ public class HandshakeUtils {
     }
 
     public static HandshakeEntry processHandshake(BedrockSession session, LoginPacket packet, ProtocolVersion protocol, boolean strict) throws Exception {
-        ChainValidationResult result = EncryptionUtils.validatePayload(packet.getAuthPayload());
+        ChainValidationResult result;
+        if(!packet.getChain().isEmpty()) {
+            result = EncryptionUtils.validateChain(packet.getChain());
+        } else if(packet.getToken() != null) {
+            result = EncryptionUtils.validateToken(packet.getAuthenticationType(), packet.getToken());
+        } else {
+            throw new IllegalArgumentException("LoginPacket must contain either a chain or a token!");
+        }
+
         boolean xboxAuth = result.signed();
         ChainValidationResult.IdentityClaims identityClaims = result.identityClaims();
         ChainValidationResult.IdentityData identityData = identityClaims.extraData;
@@ -163,7 +170,7 @@ public class HandshakeUtils {
         // Before 1.26.20, client sends CertificateChainPayload in LoginPacket instead of TokenPayload
         // We are trying to replicate that behavior.
         return new HandshakeEntry(identityPublicKey, clientData, xuid, uuid, displayName, minecraftId, xboxAuth, protocol,
-                packet.getAuthPayload() instanceof CertificateChainPayload ||
+                packet.getChain().isEmpty() ||
                     protocol.isBefore(ProtocolVersion.MINECRAFT_PE_1_26_20));
     }
 
@@ -183,7 +190,7 @@ public class HandshakeUtils {
         SecretKey encryptionKey = EncryptionUtils.getSecretKey(privateKeyPair.getPrivate(), key, token);
 
         ServerToClientHandshakePacket packet = new ServerToClientHandshakePacket();
-        packet.setJwt(EncryptionUtils.createHandshakeJwt(privateKeyPair, token));
+        packet.setHandshakeWebToken(EncryptionUtils.createHandshakeJwt(privateKeyPair, token));
 
         session.getPeer().getChannel().eventLoop().execute(() -> {
             session.sendPacketImmediately(packet);

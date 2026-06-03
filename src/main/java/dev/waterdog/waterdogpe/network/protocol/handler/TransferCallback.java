@@ -94,7 +94,7 @@ public class TransferCallback {
 
         StopSoundPacket soundPacket = new StopSoundPacket();
         soundPacket.setSoundName("portal.travel");
-        soundPacket.setStoppingAllSound(true);
+        soundPacket.setStopAllSounds(true);
         this.player.sendPacketImmediately(soundPacket);
 
         injectPosition(this.player.getConnection(), rewriteData.getSpawnPosition(), rewriteData.getRotation(), rewriteData.getEntityId());
@@ -105,7 +105,7 @@ public class TransferCallback {
         }
 
         SetLocalPlayerAsInitializedPacket initializedPacket = new SetLocalPlayerAsInitializedPacket();
-        initializedPacket.setRuntimeEntityId(this.player.getRewriteData().getOriginalEntityId());
+        initializedPacket.setPlayerID(this.player.getRewriteData().getOriginalEntityId());
         this.connection.sendPacket(initializedPacket);
 
         this.connection.setPacketHandler(new ConnectedDownstreamHandler(player, this.connection));
