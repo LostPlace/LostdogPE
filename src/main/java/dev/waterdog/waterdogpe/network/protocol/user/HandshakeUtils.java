@@ -36,6 +36,7 @@ import org.cloudburstmc.protocol.bedrock.util.EncryptionUtils;
 import javax.crypto.SecretKey;
 import java.net.InetSocketAddress;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.interfaces.ECPrivateKey;
 import java.security.interfaces.ECPublicKey;
@@ -144,8 +145,7 @@ public class HandshakeUtils {
         ChainValidationResult.IdentityData identityData = identityClaims.extraData;
         ECPublicKey identityPublicKey = (ECPublicKey) identityClaims.parsedIdentityPublicKey();
         String xuid = identityData.xuid;
-        //UUID uuid = UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes(StandardCharsets.UTF_8));
-        UUID uuid = identityData.identity;
+        UUID uuid = UUID.nameUUIDFromBytes(("pocket-auth-1-xuid:" + xuid).getBytes(StandardCharsets.UTF_8));
         String minecraftId = identityData.minecraftId;
 
         SignedJWT clientDataJwt = SignedJWT.parse(packet.getClientJwt());
